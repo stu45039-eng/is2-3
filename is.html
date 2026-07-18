@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>แบบทดสอบ ฮาร์ดแวร์คอมพิวเตอร์</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.4/dist/confetti.browser.min.js"></script>
+<style>
+  :root{
+    --bg: #F3EFE3;
+    --board: #FFFDF8;
+    --board-line: #E4DCC8;
+    --ink: #1C2321;
+    --ink-soft: #5B6259;
+    --green: #1F5C43;
+    --green-deep: #143E2D;
+    --green-text: #143E2D;
+    --green-light: #E1EEE5;
+    --copper: #B5651D;
+    --copper-deep: #8F4E15;
+    --copper-light: #F4E0C6;
+    --red: #B7402F;
+    --red-light: #F6E1DC;
+    --gold: #A9821A;
+    --steel: #3B5773;
+    --steel-light: #E4EBF1;
+    --radius: 18px;
+    --shadow: 0 2px 0 var(--board-line), 0 10px 24px -14px rgba(28,35,33,0.35);
+    --ease: cubic-bezier(.22,.61,.36,1);
+  }
+
+  body.dark{
+    --bg: #171D1A;
+    --board: #202824;
+    --board-line: #333F38;
+    --ink: #F1EFE6;
+    --ink-soft: #A7B0A9;
+    --green: #4CA57F;
+    --green-deep: #143E2D;
+    --green-text: #8FDBB2;
+    --green-light: #253A31;
+    --copper: #E0A15F;
+    --copper-deep: #F3D9BE;
+    --copper-light: #3A2E1D;
+    --red: #E08277;
+    --red-light: #3B2523;
+    --gold: #D8BC63;
+    --steel: #8FB4D9;
+    --steel-light: #213241;
+    --shadow: 0 2px 0 var(--board-line), 0 10px 24px -14px rgba(0,0,0,0.55);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0; overflow-x:hidden;}
+  body{
+    background:
+      radial-gradient(circle at 12% 8%, rgba(31,92,67,0.06), transparent 40%),
+      radial-gradient(circle at 88% 92%, rgba(181,101,29,0.07), transparent 40%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Prompt', system-ui, sans-serif;
+    font-weight:400;
+    min-height:100vh;
+    display:flex;
+    transition:background .3s ease, color .3s ease;
+    justify-content:center;
+    padding:28px 16px 60px;
+  }
+
+  .app{
+    width:100%;
+    max-width:880px;
+  }
+
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+
+  /* ---------- header ---------- */
+  .board-header{
+    text-align:center;
+    margin-bottom:26px;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:.16em;
+    color:var(--green);
+    text-transform:uppercase;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+  }
+  .eyebrow::before, .eyebrow::after{
+    content:"";
+    width:22px; height:1px;
+    background:var(--green);
+    opacity:.5;
+  }
+  h1.title{
+    font-size:clamp(26px,5vw,36px);
+    margin:10px 0 6px;
+    letter-spacing:-.01em;
+  }
+  .subtitle{
+    color:var(--ink-soft);
+    font-size:15px;
+    max-width:520px;
+    margin:0 auto;
+    line-height:1.6;
+  }
+
+  /* ---------- screens ---------- */
+  .screen{ display:none; }
+  .screen.active{ display:block; animation:fade .45s var(--ease); }
+  @keyframes fade{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;} }
+
+  /* ---------- chip / IC card motif ---------- */
+  .chip-card{
+    position:relative;
+    background:var(--board);
+    border:1px solid var(--board-line);
+    border-radius:16px;
+    box-shadow:var(--shadow);
+    padding:22px 22px 20px;
+    transition:background .3s ease, border-color .3s ease;
+  }
+  /* ---------- SCREEN 1: study cards ---------- */
+  .central-node{
+    max-width:280px;
+    margin:0 auto 10px;
+    text-align:center;
+  }
+  .central-node .chip-card{
+    background:var(--green-deep);
+    color:#fff;
+    border-color:var(--green-deep);
+  }
+  .central-node .label-th{ font-size:19px; font-weight:700; }
+  .central-node .label-en{ font-family:'IBM Plex Mono',monospace; font-size:12px; opacity:.75; margin-top:2px; }
+
+  .read-hint{
+    text-align:center;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin:0 0 20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+  }
+  .read-hint svg{ width:14px; height:14px; flex:0 0 auto; }
+
+  .card-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:14px;
+    margin-bottom:8px;
+  }
+  @media (min-width:560px){
+    .card-grid{ grid-template-columns:repeat(2,1fr); gap:18px; }
+    .card-grid .chip-card:nth-child(5){ grid-column:1 / span 2; }
+  }
+
+  .card-grid .chip-card{
+    cursor:pointer;
+    user-select:none;
+    border-top:4px solid var(--board-line);
+    opacity:.78;
+    transition:opacity .25s var(--ease), box-shadow .25s var(--ease), border-color .25s var(--ease), background .3s ease;
+  }
+  .card-grid .chip-card:hover{ opacity:1; }
+  .card-grid .chip-card:active{ opacity:1; transform:scale(.98); transition:transform .1s var(--ease); }
+  .card-grid .chip-card.read{ opacity:1; }
+
+  .chip-card.accent-copper{ border-top-color:var(--copper); }
+  .chip-card.accent-copper .part-icon{ background:var(--copper-light); color:var(--copper-deep); }
+  .chip-card.accent-green{ border-top-color:var(--green); }
+  .chip-card.accent-green .part-icon{ background:var(--green-light); color:var(--green-text); }
+  .chip-card.accent-gold{ border-top-color:var(--gold); }
+  .chip-card.accent-gold .part-icon{ background:rgba(169,130,26,0.15); color:var(--gold); }
+  .chip-card.accent-red{ border-top-color:var(--red); }
+  .chip-card.accent-red .part-icon{ background:var(--red-light); color:var(--red); }
+  .chip-card.accent-steel{ border-top-color:var(--steel); }
+  .chip-card.accent-steel .part-icon{ background:var(--steel-light); color:var(--steel); }
+
+  .part-check{
+    position:absolute;
+    top:14px; right:14px;
+    width:22px; height:22px;
+    border-radius:50%;
+    border:1.5px solid var(--board-line);
+    background:var(--board);
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px;
+    color:transparent;
+    transition:all .2s ease;
+  }
+  .chip-card.read .part-check{
+    background:var(--green);
+    border-color:var(--green);
+    color:#fff;
+  }
+
+  .part-head{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    margin-bottom:14px;
+    padding-right:22px;
+  }
+  .part-icon{
+    flex:0 0 auto;
+    width:44px; height:44px;
+    border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .part-icon svg{ width:23px; height:23px; }
+
+  .part-code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--copper-deep);
+    letter-spacing:.06em;
+    margin-bottom:4px;
+  }
+  .part-name-th{
+    font-weight:700;
+    font-size:18px;
+    line-height:1.3;
+    margin-bottom:3px;
+  }
+  .part-name-en{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--ink-soft);
+  }
+  .part-desc{
+    font-size:14.5px;
+    line-height:1.8;
+    color:var(--ink-soft);
+  }
+
+  .cta-row{
+    margin-top:30px;
+    text-align:center;
+  }
+  .btn{
+    font-family:'Prompt', sans-serif;
+    font-weight:600;
+    font-size:16px;
+    border:none;
+    cursor:pointer;
+    border-radius:999px;
+    padding:15px 34px;
+    color:#fff;
+    background:linear-gradient(180deg, var(--copper), var(--copper-deep));
+    box-shadow:0 8px 18px -8px rgba(143,78,21,0.55);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover{ transform:translateY(-2px); box-shadow:0 12px 22px -8px rgba(143,78,21,0.6); }
+  .btn:active{ transform:translateY(0); }
+  .btn.ghost{
+    background:transparent;
+    color:var(--green);
+    border:1.5px solid var(--green);
+    box-shadow:none;
+  }
+  .btn.ghost:hover{ background:var(--green-light); }
+  .hint{
+    margin-top:12px;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .read-progress{
+    margin-top:6px;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    font-family:'IBM Plex Mono',monospace;
+    transition:color .2s ease;
+  }
+  .read-progress.complete{ color:var(--green); font-weight:600; }
+
+  /* ---------- SCREEN 2: quiz ---------- */
+  .progress-track{
+    display:flex;
+    gap:5px;
+    margin-bottom:22px;
+  }
+  .progress-track .seg{
+    flex:1;
+    height:6px;
+    border-radius:3px;
+    background:var(--board-line);
+    transition:background .25s ease;
+  }
+  .progress-track .seg.done{ background:var(--green); }
+  .progress-track .seg.current{ background:var(--copper); }
+
+  .progress-label{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    row-gap:6px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-bottom:10px;
+  }
+
+  .question-card{
+    background:var(--board);
+    border:1px solid var(--board-line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:26px 22px;
+    margin-bottom:20px;
+  }
+  .question-topic{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--green);
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  .question-text{
+    font-size:19px;
+    font-weight:600;
+    line-height:1.5;
+  }
+
+  .answer-frame{
+    border:2px solid var(--green);
+    border-radius:22px;
+    padding:20px;
+    background:var(--green-light);
+  }
+  .answer-frame-label{
+    text-align:center;
+    font-weight:700;
+    color:var(--green-text);
+    margin-bottom:14px;
+    font-size:14px;
+    letter-spacing:.04em;
+  }
+  .answer-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+  .answer-opt{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--board);
+    border:1.5px solid var(--board-line);
+    border-radius:14px;
+    padding:14px 12px;
+    font-size:14.5px;
+    text-align:left;
+    cursor:pointer;
+    transition:border-color .25s var(--ease), transform .25s var(--ease), background .25s var(--ease);
+    color:var(--ink);
+    font-family:'Prompt', sans-serif;
+  }
+  .answer-opt:active{ border-color:var(--copper); }
+  .answer-opt .num{
+    flex:0 0 auto;
+    width:26px; height:26px;
+    border-radius:50%;
+    background:var(--green);
+    color:#fff;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .answer-opt.selected{
+    border-color:var(--copper);
+    background:var(--copper-light);
+  }
+  .answer-opt.correct{
+    border-color:var(--green);
+    background:var(--green-light);
+  }
+  .answer-opt.correct .num{ background:var(--green); }
+  .answer-opt.wrong{
+    border-color:var(--red);
+    background:var(--red-light);
+  }
+  .answer-opt.wrong .num{ background:var(--red); }
+  .answer-opt.disabled{ pointer-events:none; }
+
+  @media (max-width:480px){
+    .answer-grid{ grid-template-columns:1fr; }
+    .question-text{ font-size:17px; }
+  }
+
+  /* ---------- SCREEN 3: results ---------- */
+  .score-panel{
+    background:var(--board);
+    border:1px solid var(--board-line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:30px 24px;
+    text-align:center;
+    margin-bottom:22px;
+  }
+  .score-big{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:52px;
+    font-weight:700;
+    color:var(--green-text);
+    line-height:1;
+  }
+  .score-big span{ font-size:22px; color:var(--ink-soft); }
+  .verdict{
+    display:inline-block;
+    margin-top:10px;
+    padding:6px 18px;
+    border-radius:999px;
+    font-weight:700;
+    font-size:15px;
+  }
+  .verdict.low{ background:var(--copper-light); color:var(--copper-deep); }
+  .verdict.high{ background:var(--green-light); color:var(--green-text); }
+
+  .gauge{
+    margin:24px auto 6px;
+    max-width:420px;
+  }
+  .gauge-bar{
+    position:relative;
+    height:14px;
+    border-radius:7px;
+    background: linear-gradient(90deg, var(--copper-light) 0%, var(--copper-light) 45%, var(--green-light) 45%, var(--green-light) 100%);
+    border:1px solid var(--board-line);
+  }
+  .gauge-marker{
+    position:absolute;
+    top:-9px;
+    width:2px;
+    height:32px;
+    background:var(--ink);
+    transform:translateX(-1px);
+  }
+  .gauge-marker::after{
+    content:"";
+    position:absolute;
+    top:-8px; left:50%;
+    width:0; height:0;
+    transform:translateX(-50%);
+    border-left:6px solid transparent;
+    border-right:6px solid transparent;
+    border-top:8px solid var(--ink);
+  }
+  .gauge-labels{
+    display:flex;
+    justify-content:space-between;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--ink-soft);
+    margin-top:8px;
+  }
+  .gauge-labels .l1{ color:var(--copper-deep); font-weight:600; }
+  .gauge-labels .l2{ color:var(--green-text); font-weight:600; }
+
+  .tips-box{
+    margin-top:20px;
+    text-align:left;
+    background:var(--green-light);
+    border-radius:14px;
+    padding:16px 18px;
+    font-size:14px;
+    line-height:1.7;
+    color:var(--green-text);
+  }
+  .tips-box b{ display:block; margin-bottom:4px; font-size:13px; letter-spacing:.04em; }
+
+  .review-title{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.1em;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+    margin:26px 0 12px;
+  }
+  .review-item{
+    background:var(--board);
+    border:1px solid var(--board-line);
+    border-radius:14px;
+    padding:14px 16px;
+    margin-bottom:10px;
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+  }
+  .review-icon{
+    flex:0 0 auto;
+    width:26px; height:26px;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px;
+    font-weight:700;
+    color:#fff;
+    margin-top:2px;
+  }
+  .review-icon.ok{ background:var(--green); }
+  .review-icon.no{ background:var(--red); }
+  .review-body .q{ font-size:14.5px; font-weight:600; margin-bottom:4px; }
+  .review-body .a{ font-size:13px; color:var(--ink-soft); line-height:1.6; }
+  .review-body .a b{ color:var(--ink); }
+
+  .retry-row{
+    text-align:center;
+    margin-top:28px;
+  }
+
+  footer{
+    text-align:center;
+    margin-top:36px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+    opacity:.7;
+  }
+
+  /* ---------- toolbar (dark mode) ---------- */
+  .toolbar{
+    position:fixed;
+    top:18px;
+    right:18px;
+    z-index:50;
+    display:flex;
+    gap:10px;
+  }
+  .toolbar-btn{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--board);
+    border:1px solid var(--board-line);
+    border-radius:999px;
+    padding:8px 16px 8px 12px;
+    cursor:pointer;
+    box-shadow:var(--shadow);
+    font-family:'Prompt', sans-serif;
+    font-size:13px;
+    font-weight:500;
+    color:var(--ink);
+    transition:background .3s ease, border-color .3s ease, color .3s ease;
+  }
+  .toolbar-btn .icon{
+    width:20px; height:20px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .toolbar-btn .icon svg{ width:18px; height:18px; }
+  .toolbar-btn .icon .sun{ display:block; }
+  .toolbar-btn .icon .moon{ display:none; }
+  body.dark .toolbar-btn .icon .sun{ display:none; }
+  body.dark .toolbar-btn .icon .moon{ display:block; }
+
+  @media (max-width:480px){
+    .toolbar{
+      top:12px; right:12px;
+      gap:8px;
+    }
+    .toolbar-btn{
+      padding:0;
+      width:44px; height:44px;
+      justify-content:center;
+    }
+    .toolbar-btn .label{ display:none; }
+  }
+
+  /* ================= EXTRA FLAIR ================= */
+
+  /* animated circuit-trace background */
+  .bg-fx{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    pointer-events:none;
+    overflow:hidden;
+  }
+  .bg-fx svg{
+    position:absolute;
+    width:140%; height:140%;
+    top:-20%; left:-20%;
+    opacity:.5;
+    animation:bgDrift 38s linear infinite;
+  }
+  body.dark .bg-fx svg{ opacity:.35; }
+  .bg-fx .trace{
+    fill:none;
+    stroke:var(--green);
+    stroke-width:1;
+    stroke-dasharray:6 10;
+    opacity:.35;
+    animation:dashMove 6s linear infinite;
+  }
+  .bg-fx .trace.copper{ stroke:var(--copper); animation-duration:9s; }
+  .bg-fx .node{ fill:var(--green); opacity:.3; }
+  .bg-fx .node.copper{ fill:var(--copper); }
+  @keyframes dashMove{ to{ stroke-dashoffset:-160; } }
+  @keyframes bgDrift{
+    0%{ transform:translate(0,0) rotate(0deg); }
+    50%{ transform:translate(-1.5%,1.5%) rotate(.4deg); }
+    100%{ transform:translate(0,0) rotate(0deg); }
+  }
+
+  .app{ position:relative; z-index:1; }
+
+  /* confetti canvas sits above everything */
+  #confetti-canvas{
+    position:fixed;
+    inset:0;
+    width:100%; height:100%;
+    z-index:200;
+    pointer-events:none;
+  }
+
+  /* entrance stagger for header + cta */
+  .board-header{ animation:riseIn .6s cubic-bezier(.2,.8,.2,1) both; }
+  .cta-row{ animation:riseIn .6s cubic-bezier(.2,.8,.2,1) both; animation-delay:.15s; }
+  @keyframes riseIn{
+    from{ opacity:0; transform:translateY(14px); }
+    to{ opacity:1; transform:none; }
+  }
+
+  /* central node glow pulse */
+  .central-node{ animation:riseIn .5s ease both; }
+  .central-node .chip-card{
+    position:relative;
+    box-shadow:0 0 0 0 rgba(31,92,67,.0), var(--shadow);
+    animation:glowPulse 4.2s ease-in-out infinite;
+  }
+  @keyframes glowPulse{
+    0%,100%{ box-shadow:0 0 0 0 rgba(31,92,67,.0), var(--shadow); }
+    50%{ box-shadow:0 0 20px 2px rgba(31,92,67,.22), var(--shadow); }
+  }
+  body.dark .central-node .chip-card{ animation-name:glowPulseDark; }
+  @keyframes glowPulseDark{
+    0%,100%{ box-shadow:0 0 0 0 rgba(76,165,127,.0), var(--shadow); }
+    50%{ box-shadow:0 0 20px 2px rgba(76,165,127,.3), var(--shadow); }
+  }
+
+  /* study cards: tilt + shine + stagger entrance */
+  .card-grid{ perspective:900px; }
+  .card-grid .chip-card{
+    will-change:transform;
+    opacity:0;
+    animation:cardIn .5s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  .card-grid .chip-card::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:14px;
+    background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.35) 48%, transparent 62%);
+    background-size:220% 220%;
+    background-position:140% 140%;
+    opacity:0;
+    transition:opacity .3s ease;
+    pointer-events:none;
+  }
+  .card-grid .chip-card:hover::before{
+    opacity:1;
+  }
+  @media (hover:hover) and (pointer:fine){
+    .card-grid .chip-card:hover::before{
+      animation:shine 1.1s ease forwards;
+    }
+    .answer-opt:hover{ border-color:var(--copper); transform:translateY(-2px); }
+  }
+  @keyframes shine{
+    from{ background-position:140% 140%; }
+    to{ background-position:-40% -40%; }
+  }
+  @keyframes cardIn{
+    from{ opacity:0; transform:translateY(16px) scale(.96); }
+    to{ opacity:1; transform:translateY(0) scale(1); }
+  }
+  .card-grid .chip-card.read .part-check{
+    animation:checkPop .35s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes checkPop{
+    0%{ transform:scale(0); }
+    70%{ transform:scale(1.25); }
+    100%{ transform:scale(1); }
+  }
+
+  /* buttons: ripple + shimmer sweep on primary btn (hover-triggered, calmer) */
+  .btn{
+    position:relative;
+    overflow:hidden;
+    isolation:isolate;
+    transition:transform .2s var(--ease), box-shadow .2s var(--ease);
+  }
+  .btn::after{
+    content:"";
+    position:absolute;
+    top:0; left:-60%;
+    width:40%; height:100%;
+    background:linear-gradient(115deg, transparent, rgba(255,255,255,.45), transparent);
+    transform:skewX(-18deg);
+    transition:left .7s var(--ease);
+  }
+  .btn:hover::after{ left:130%; }
+  .btn.ghost::after{ background:linear-gradient(115deg, transparent, rgba(31,92,67,.18), transparent); }
+  .ripple{
+    position:absolute;
+    border-radius:50%;
+    background:rgba(255,255,255,.55);
+    transform:scale(0);
+    animation:rippleOut .55s ease-out;
+    pointer-events:none;
+  }
+  @keyframes rippleOut{
+    to{ transform:scale(1); opacity:0; }
+  }
+
+  .read-progress.complete{
+    animation:completePop .4s ease;
+  }
+  @keyframes completePop{
+    0%{ transform:scale(1); }
+    40%{ transform:scale(1.08); }
+    100%{ transform:scale(1); }
+  }
+
+  /* quiz screen: streak badge */
+  .streak-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    font-weight:600;
+    color:var(--copper-deep);
+    background:var(--copper-light);
+    border-radius:999px;
+    padding:3px 10px;
+    margin-left:8px;
+    opacity:0;
+    transform:scale(.7);
+    transition:opacity .25s ease, transform .25s cubic-bezier(.34,1.56,.64,1);
+    vertical-align:middle;
+  }
+  .streak-badge.show{ opacity:1; transform:scale(1); }
+  .streak-badge .flame{ animation:flameFlicker 1s ease-in-out infinite; }
+  @keyframes flameFlicker{
+    0%,100%{ transform:scale(1) rotate(-2deg); }
+    50%{ transform:scale(1.12) rotate(2deg); }
+  }
+
+  /* question card entrance per question */
+  .question-card{ animation:qSlideIn .35s cubic-bezier(.2,.8,.2,1); }
+  @keyframes qSlideIn{
+    from{ opacity:0; transform:translateX(18px); }
+    to{ opacity:1; transform:none; }
+  }
+
+  /* progress segments shimmer when filled */
+  .progress-track .seg{ position:relative; overflow:hidden; }
+  .progress-track .seg.done::after, .progress-track .seg.current::after{
+    content:"";
+    position:absolute; inset:0;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+    background-size:200% 100%;
+    animation:segShine 2.6s ease-in-out infinite;
+  }
+  @keyframes segShine{
+    0%{ background-position:200% 0; }
+    100%{ background-position:-200% 0; }
+  }
+  .progress-track .seg.current{ animation:segGrow .35s var(--ease); }
+  @keyframes segGrow{ from{ transform:scaleY(.4); } to{ transform:scaleY(1); } }
+
+  /* answer feedback micro-animations */
+  .answer-opt{ position:relative; }
+  .answer-opt.correct{ animation:correctPop .4s var(--ease); }
+  @keyframes correctPop{
+    0%{ transform:scale(1); }
+    45%{ transform:scale(1.04); }
+    100%{ transform:scale(1); }
+  }
+  .answer-opt.wrong{ animation:wrongShake .35s var(--ease); }
+  @keyframes wrongShake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-4px); }
+    50%{ transform:translateX(3px); }
+    75%{ transform:translateX(-2px); }
+  }
+
+  /* results screen: number count-up + verdict entrance */
+  .score-panel{ animation:riseIn .5s cubic-bezier(.2,.8,.2,1) both; }
+  .verdict{ animation:verdictIn .4s cubic-bezier(.34,1.56,.64,1) .1s both; }
+  @keyframes verdictIn{
+    from{ opacity:0; transform:scale(.6); }
+    to{ opacity:1; transform:scale(1); }
+  }
+  .verdict.high{
+    background:linear-gradient(120deg, var(--green-light), var(--green-light), rgba(169,130,26,.25), var(--green-light));
+    background-size:300% 100%;
+    animation:verdictIn .4s cubic-bezier(.34,1.56,.64,1) .1s both, verdictShine 3.5s linear infinite .5s;
+  }
+  @keyframes verdictShine{
+    0%{ background-position:0% 0; }
+    100%{ background-position:-300% 0; }
+  }
+  .gauge-marker{ transition:left .8s cubic-bezier(.2,.8,.2,1); }
+  .gauge-marker{ animation:markerDrop .5s cubic-bezier(.34,1.56,.64,1) .3s both; }
+  @keyframes markerDrop{
+    from{ opacity:0; transform:translate(-1px,-8px); }
+    to{ opacity:1; transform:translate(-1px,0); }
+  }
+  .review-item{
+    opacity:0;
+    animation:reviewIn .4s ease forwards;
+  }
+  @keyframes reviewIn{
+    from{ opacity:0; transform:translateY(10px); }
+    to{ opacity:1; transform:none; }
+  }
+  .review-icon.ok{ animation:checkPop .35s cubic-bezier(.34,1.56,.64,1) .1s both; }
+  .review-icon.no{ animation:checkPop .35s cubic-bezier(.34,1.56,.64,1) .1s both; }
+
+  /* reduce motion respect */
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{
+      animation-duration:0.001ms !important;
+      animation-iteration-count:1 !important;
+      transition-duration:0.001ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-fx" aria-hidden="true">
+  <svg viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+    <path class="trace" d="M40 120 H260 L300 160 V320 L340 360 H600" />
+    <path class="trace copper" d="M760 60 V220 L720 260 H500 L460 300 V500" />
+    <path class="trace" d="M60 700 H240 L280 660 V500 L320 460 H560 L600 500 V620" />
+    <path class="trace copper" d="M700 760 V600 L660 560 H420" />
+    <circle class="node" cx="260" cy="120" r="5"/>
+    <circle class="node" cx="340" cy="360" r="5"/>
+    <circle class="node copper" cx="720" cy="260" r="5"/>
+    <circle class="node copper" cx="460" cy="500" r="5"/>
+    <circle class="node" cx="280" cy="660" r="5"/>
+    <circle class="node" cx="600" cy="500" r="5"/>
+    <circle class="node copper" cx="660" cy="560" r="5"/>
+  </svg>
+</div>
+<canvas id="confetti-canvas"></canvas>
+
+<div class="toolbar">
+  <button class="toolbar-btn" id="theme-toggle" type="button" aria-label="สลับโหมดมืด">
+    <span class="icon">
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.4 4.4l1.7 1.7M17.9 17.9l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.4 19.6l1.7-1.7M17.9 6.1l1.7-1.7"/></svg>
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.6 6.6 0 0 0 10.5 10.5Z"/></svg>
+    </span>
+    <span class="label">โหมดมืด</span>
+  </button>
+</div>
+
+<div class="app">
+
+  <div class="board-header">
+    <span class="eyebrow">Quiz Module</span>
+    <h1 class="title">แบบทดสอบความรู้ ฮาร์ดแวร์คอมพิวเตอร์</h1>
+    <p class="subtitle">อ่านข้อมูลชิ้นส่วนฮาร์ดแวร์ทั้ง 5 ให้เข้าใจก่อน แล้วค่อยเริ่มทำแบบทดสอบ</p>
+  </div>
+
+  <!-- ===================== SCREEN 1 : STUDY ===================== -->
+  <section id="screen-study" class="screen active">
+
+    <div class="central-node">
+      <div class="chip-card">
+        <div class="label-th">ฮาร์ดแวร์</div>
+        <div class="label-en">HARDWARE</div>
+      </div>
+    </div>
+
+    <p class="read-hint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+      แตะการ์ดที่อ่านแล้วเพื่อทำเครื่องหมาย
+    </p>
+
+    <div class="card-grid" id="card-grid"></div>
+
+    <div class="cta-row">
+      <button class="btn" id="start-btn">เริ่มทำแบบทดสอบ</button>
+      <div class="hint">10 คำถาม · สุ่มลำดับใหม่ทุกครั้ง</div>
+      <div class="read-progress" id="read-progress">อ่านแล้ว 0 / 5 ชิ้นส่วน</div>
+    </div>
+  </section>
+
+  <!-- ===================== SCREEN 2 : QUIZ ===================== -->
+  <section id="screen-quiz" class="screen">
+    <div class="progress-label">
+      <span id="progress-text">ข้อ 1 / 10</span>
+      <span>ตอบถูก <span id="progress-score-num">0</span> ข้อ<span class="streak-badge" id="streak-badge"><span class="flame">🔥</span><span id="streak-num">0</span></span></span>
+    </div>
+    <div class="progress-track" id="progress-track"></div>
+
+    <div class="question-card">
+      <div class="question-topic" id="q-topic">CPU</div>
+      <div class="question-text" id="q-text">คำถามจะแสดงที่นี่</div>
+    </div>
+
+    <div class="answer-frame">
+      <div class="answer-frame-label">คำตอบ</div>
+      <div class="answer-grid" id="answer-grid"></div>
+    </div>
+  </section>
+
+  <!-- ===================== SCREEN 3 : RESULTS ===================== -->
+  <section id="screen-result" class="screen">
+    <div class="score-panel">
+      <div class="score-big"><span id="res-score">0</span><span> / 10</span></div>
+      <div class="verdict" id="res-verdict">—</div>
+
+      <div class="gauge">
+        <div class="gauge-bar">
+          <div class="gauge-marker" id="gauge-marker" style="left:0%"></div>
+        </div>
+        <div class="gauge-labels">
+          <span class="l1">0–4 = เด็กใหม่</span>
+          <span class="l2">5–10 = ยอดคน</span>
+        </div>
+      </div>
+
+      <div class="tips-box" id="tips-box">
+        <b>คำแนะนำ</b>
+        <span id="tips-text"></span>
+      </div>
+    </div>
+
+    <div class="review-title">เฉลยรายข้อ</div>
+    <div id="review-list"></div>
+
+    <div class="retry-row">
+      <button class="btn ghost" id="retry-btn">ทำแบบทดสอบอีกครั้ง</button>
+    </div>
+  </section>
+
+  <footer>PCB REV.01 · HARDWARE 101</footer>
+</div>
+
+<script>
+/* ---------------- feature detect ---------------- */
+const canHoverTilt = window.matchMedia && window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+
+/* ---------------- data ---------------- */
+const parts = [
+  {
+    code:"U1", nameTh:"ซีพียู", nameEn:"CPU · Central Processing Unit", accent:"copper",
+    desc:"สมองของคอมพิวเตอร์ ทำหน้าที่ประมวลผลคำสั่งต่างๆ ยิ่งความเร็ว (GHz) และจำนวนคอร์มาก ยิ่งประมวลผลได้เร็ว",
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="6" y="6" width="12" height="12" rx="1.4"/><path d="M9 2v4M12 2v4M15 2v4M9 18v4M12 18v4M15 18v4M2 9h4M2 12h4M2 15h4M18 9h4M18 12h4M18 15h4"/></svg>'
+  },
+  {
+    code:"U2", nameTh:"จีพียู", nameEn:"GPU · Graphics Processing Unit", accent:"green",
+    desc:"ประมวลผลภาพและกราฟิกโดยเฉพาะ จำเป็นสำหรับการเล่นเกม ตัดต่อวิดีโอ และงานกราฟิก 3 มิติ",
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="2" y="7" width="20" height="10" rx="2"/><circle cx="8.5" cy="12" r="2.2"/><circle cx="15.5" cy="12" r="2.2"/></svg>'
+  },
+  {
+    code:"U3", nameTh:"แรม", nameEn:"RAM · Random Access Memory", accent:"gold",
+    desc:"พื้นที่พักข้อมูลชั่วคราวขณะเปิดใช้งานโปรแกรม ข้อมูลจะหายไปเมื่อปิดเครื่อง ยิ่งมีมาก ยิ่งเปิดหลายโปรแกรมพร้อมกันได้ลื่นไหล",
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="18" height="10" rx="1.3"/><path d="M5.5 15v3M9 15v3M12.5 15v3M16 15v3M19 15v3"/></svg>'
+  },
+  {
+    code:"U4", nameTh:"เพาเวอร์ซัพพลาย", nameEn:"PSU · Power Supply Unit", accent:"red",
+    desc:"แปลงไฟฟ้ากระแสสลับจากปลั๊กเป็นไฟฟ้ากระแสตรง จ่ายให้ชิ้นส่วนต่างๆ ในเครื่อง ต้องเลือกกำลังไฟ (วัตต์) ให้เหมาะกับสเปกเครื่อง",
+    icon:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>'
+  },
+  {
+    code:"U5", nameTh:"เมนบอร์ด", nameEn:"Motherboard", accent:"steel",
+    desc:"แผงวงจรหลักที่เชื่อมต่อชิ้นส่วนฮาร์ดแวร์ทั้งหมดเข้าด้วยกัน เปรียบเสมือนกระดูกสันหลังของคอมพิวเตอร์",
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1"/><circle cx="16" cy="8" r="1"/><path d="M8 9v3.5h8V9M8 16.5h8M12 12.5v4"/></svg>'
+  }
+];
+
+const questions = [
+  { topic:"CPU", q:"CPU ย่อมาจากอะไร?", opts:["Central Processing Unit","Central Program Unit","Compute Personal Unit","Core Processing Unit"], correct:0 },
+  { topic:"CPU", q:"หน่วยใดที่มักใช้บอกความเร็วของ CPU?", opts:["วัตต์ (Watt)","กิกะเฮิรตซ์ (GHz)","กิกะไบต์ (GB)","โวลต์ (Volt)"], correct:1 },
+  { topic:"GPU", q:"GPU เหมาะกับงานประเภทใดมากที่สุด?", opts:["พิมพ์เอกสารทั่วไป","เล่นเกม / ตัดต่อวิดีโอ / กราฟิก 3 มิติ","เก็บไฟล์ถาวร","จ่ายไฟให้เครื่อง"], correct:1 },
+  { topic:"GPU", q:"GPU ย่อมาจากอะไร?", opts:["General Processing Unit","Graphics Processing Unit","Global Power Unit","Game Processing Unit"], correct:1 },
+  { topic:"RAM", q:"ข้อมูลใน RAM จะเป็นอย่างไรเมื่อปิดเครื่อง?", opts:["ยังคงอยู่ถาวร","หายไปทันที","บันทึกลงฮาร์ดดิสก์อัตโนมัติ","ถูกเข้ารหัสไว้"], correct:1 },
+  { topic:"RAM", q:"ยิ่ง RAM มาก จะส่งผลอย่างไร?", opts:["เปิดหลายโปรแกรมพร้อมกันได้ลื่นไหลขึ้น","จอภาพคมชัดขึ้น","ไฟล์ไม่มีวันหาย","เครื่องประหยัดไฟมากขึ้น"], correct:0 },
+  { topic:"PSU", q:"PSU ทำหน้าที่อะไร?", opts:["ประมวลผลภาพ","เก็บข้อมูลถาวร","แปลงไฟฟ้าและจ่ายไฟให้ชิ้นส่วนต่างๆ","เชื่อมต่ออินเทอร์เน็ต"], correct:2 },
+  { topic:"PSU", q:"สิ่งใดต้องเลือกให้เหมาะกับสเปกเครื่องเวลาซื้อ PSU?", opts:["สีของตัวเครื่อง","กำลังไฟ (วัตต์)","ยี่ห้อคีย์บอร์ด","ขนาดจอภาพ"], correct:1 },
+  { topic:"Motherboard", q:"เมนบอร์ดเปรียบเสมือนอะไรของคอมพิวเตอร์?", opts:["สมอง","กระดูกสันหลัง","ดวงตา","หัวใจ"], correct:1 },
+  { topic:"Motherboard", q:"หน้าที่หลักของเมนบอร์ดคืออะไร?", opts:["ประมวลผลกราฟิก","จ่ายไฟฟ้ากระแสสลับ","เชื่อมต่อชิ้นส่วนฮาร์ดแวร์ทั้งหมดเข้าด้วยกัน","เก็บข้อมูลชั่วคราว"], correct:2 }
+];
+
+/* ---------------- theme toggle ---------------- */
+const themeBtn = document.getElementById('theme-toggle');
+const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+if(prefersDark){ document.body.classList.add('dark'); }
+themeBtn.addEventListener('click', ()=>{
+  document.body.classList.toggle('dark');
+});
+
+/* ---------------- shuffle helpers ---------------- */
+function shuffleArray(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildQuizDeck(){
+  // new random question order + new random option order every attempt
+  return shuffleArray(questions).map(item=>{
+    const optionOrder = shuffleArray(item.opts.map((_, idx)=> idx));
+    return {
+      topic: item.topic,
+      q: item.q,
+      opts: optionOrder.map(idx => item.opts[idx]),
+      correct: optionOrder.indexOf(item.correct)
+    };
+  });
+}
+
+/* ---------------- state ---------------- */
+let quizDeck = questions;
+let current = 0;
+let answers = new Array(questions.length).fill(null);
+let locked = false;
+
+/* ---------------- render: study cards ---------------- */
+const grid = document.getElementById('card-grid');
+parts.forEach((p, pIdx)=>{
+  const card = document.createElement('div');
+  card.className = `chip-card accent-${p.accent}`;
+  card.style.animationDelay = (pIdx * 0.08) + 's';
+  card.innerHTML = `
+    <div class="part-check">✓</div>
+    <div class="part-head">
+      <span class="part-icon">${p.icon}</span>
+      <div>
+        <div class="part-code">${p.code}</div>
+        <div class="part-name-th">${p.nameTh}</div>
+        <div class="part-name-en">${p.nameEn}</div>
+      </div>
+    </div>
+    <div class="part-desc">${p.desc}</div>
+  `;
+  card.addEventListener('click', ()=>{
+    card.classList.toggle('read');
+    updateReadProgress();
+  });
+  if(canHoverTilt) addTilt(card);
+  grid.appendChild(card);
+});
+
+/* subtle 3D tilt-on-hover for cards */
+function addTilt(el){
+  const strength = 5;
+  let raf = null;
+  el.addEventListener('mouseenter', ()=>{
+    el.style.transition = 'box-shadow .25s var(--ease)';
+  });
+  el.addEventListener('mousemove', (e)=>{
+    if(raf) return;
+    raf = requestAnimationFrame(()=>{
+      const r = el.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width;
+      const py = (e.clientY - r.top) / r.height;
+      const rotY = (px - 0.5) * strength * 2;
+      const rotX = (0.5 - py) * strength * 2;
+      el.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateY(-4px)`;
+      raf = null;
+    });
+  });
+  el.addEventListener('mouseleave', ()=>{
+    if(raf){ cancelAnimationFrame(raf); raf = null; }
+    el.style.transition = 'transform .5s var(--ease), box-shadow .25s var(--ease)';
+    el.style.transform = '';
+  });
+}
+
+/* small ripple effect for every .btn */
+document.querySelectorAll('.btn').forEach(btn=>{
+  btn.addEventListener('click', function(e){
+    const r = this.getBoundingClientRect();
+    const size = Math.max(r.width, r.height) * 1.4;
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = (e.clientX - r.left - size/2) + 'px';
+    ripple.style.top = (e.clientY - r.top - size/2) + 'px';
+    this.appendChild(ripple);
+    setTimeout(()=> ripple.remove(), 600);
+  });
+});
+
+function updateReadProgress(){
+  const total = parts.length;
+  const readCount = document.querySelectorAll('.card-grid .chip-card.read').length;
+  const el = document.getElementById('read-progress');
+  el.textContent = `อ่านแล้ว ${readCount} / ${total} ชิ้นส่วน`;
+  el.classList.toggle('complete', readCount === total);
+}
+
+/* ---------------- screen switching ---------------- */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+document.getElementById('start-btn').addEventListener('click', ()=>{
+  quizDeck = buildQuizDeck();
+  current = 0;
+  answers = new Array(quizDeck.length).fill(null);
+  buildProgressTrack();
+  renderQuestion();
+  showScreen('screen-quiz');
+});
+
+/* ---------------- progress track ---------------- */
+function buildProgressTrack(){
+  const track = document.getElementById('progress-track');
+  track.innerHTML = '';
+  quizDeck.forEach((_,i)=>{
+    const seg = document.createElement('div');
+    seg.className = 'seg';
+    seg.id = 'seg-'+i;
+    track.appendChild(seg);
+  });
+}
+function updateProgressTrack(){
+  quizDeck.forEach((_,i)=>{
+    const seg = document.getElementById('seg-'+i);
+    seg.className = 'seg' + (i < current ? ' done' : (i === current ? ' current' : ''));
+  });
+  document.getElementById('progress-text').textContent = `ข้อ ${current+1} / ${quizDeck.length}`;
+  const correctSoFar = answers.filter((a,i)=> a!==null && a===quizDeck[i].correct).length;
+  document.getElementById('progress-score-num').textContent = correctSoFar;
+
+  // streak: count trailing consecutive correct answers up to the last answered question
+  let streak = 0;
+  let startIdx = (answers[current] !== null) ? current : current - 1;
+  for(let i = startIdx; i >= 0; i--){
+    if(answers[i] === quizDeck[i].correct){ streak++; } else { break; }
+  }
+  const badge = document.getElementById('streak-badge');
+  document.getElementById('streak-num').textContent = streak;
+  badge.classList.toggle('show', streak >= 2);
+}
+
+/* ---------------- render question ---------------- */
+function renderQuestion(){
+  locked = false;
+  const item = quizDeck[current];
+  document.getElementById('q-topic').textContent = item.topic;
+  document.getElementById('q-text').textContent = item.q;
+
+  const answerGrid = document.getElementById('answer-grid');
+  answerGrid.innerHTML = '';
+  item.opts.forEach((opt, idx)=>{
+    const btn = document.createElement('div');
+    btn.className = 'answer-opt';
+    btn.innerHTML = `<span class="num">${idx+1}</span><span>${opt}</span>`;
+    btn.addEventListener('click', ()=> selectAnswer(idx));
+    answerGrid.appendChild(btn);
+  });
+
+  updateProgressTrack();
+}
+
+/* ---------------- handle answer ---------------- */
+function selectAnswer(idx){
+  if(locked) return;
+  locked = true;
+  answers[current] = idx;
+
+  const opts = document.querySelectorAll('#answer-grid .answer-opt');
+  opts.forEach((el, i)=>{
+    el.classList.add('disabled');
+    if(i === quizDeck[current].correct){
+      el.classList.add('correct');
+    } else if(i === idx){
+      el.classList.add('wrong');
+    }
+  });
+
+  updateProgressTrack();
+
+  setTimeout(()=>{
+    if(current < quizDeck.length - 1){
+      current++;
+      renderQuestion();
+    } else {
+      showResults();
+    }
+  }, 700);
+}
+
+/* ---------------- results ---------------- */
+function animateCountUp(el, target, duration){
+  const start = 0;
+  const t0 = performance.now();
+  function step(now){
+    const p = Math.min(1, (now - t0) / duration);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(start + (target - start) * eased);
+    if(p < 1) requestAnimationFrame(step);
+    else el.textContent = target;
+  }
+  requestAnimationFrame(step);
+}
+
+function fireConfetti(){
+  if(typeof confetti !== 'function') return;
+  const canvas = document.getElementById('confetti-canvas');
+  const myConfetti = confetti.create(canvas, { resize:true, useWorker:true });
+  const colors = ['#1F5C43', '#B5651D', '#A9821A'];
+  myConfetti({ particleCount:90, spread:75, startVelocity:38, origin:{ y:0.35 }, colors });
+  setTimeout(()=> myConfetti({ particleCount:60, spread:100, startVelocity:30, origin:{ y:0.4 }, colors }), 200);
+}
+
+function showResults(){
+  const score = answers.filter((a,i)=> a!==null && a===quizDeck[i].correct).length;
+  animateCountUp(document.getElementById('res-score'), score, 700);
+
+  const verdictEl = document.getElementById('res-verdict');
+  const tipsText = document.getElementById('tips-text');
+  const marker = document.getElementById('gauge-marker');
+  marker.style.left = Math.min(100, (score/10)*100) + '%';
+
+  if(score <= 4){
+    verdictEl.textContent = 'เด็กใหม่';
+    verdictEl.className = 'verdict low';
+    tipsText.textContent = 'ยังพลาดในหลายจุดพื้นฐาน ลองย้อนกลับไปอ่านการ์ดชิ้นส่วนฮาร์ดแวร์ทั้ง 5 อีกครั้ง เน้นจำหน้าที่หลักของแต่ละชิ้นส่วนก่อนทำซ้ำ';
+  } else {
+    verdictEl.textContent = 'ยอดคน';
+    verdictEl.className = 'verdict high';
+    tipsText.textContent = 'เข้าใจหน้าที่ของฮาร์ดแวร์หลักได้ดีมาก ลองศึกษาสเปกเชิงลึก เช่น จำนวนคอร์ของ CPU หรือ VRAM ของ GPU เพื่อต่อยอดความรู้';
+  }
+
+  const list = document.getElementById('review-list');
+  list.innerHTML = '';
+  quizDeck.forEach((item,i)=>{
+    const isCorrect = answers[i] === item.correct;
+    const row = document.createElement('div');
+    row.className = 'review-item';
+    row.style.animationDelay = (i * 0.05) + 's';
+    row.innerHTML = `
+      <div class="review-icon ${isCorrect?'ok':'no'}">${isCorrect?'✓':'✕'}</div>
+      <div class="review-body">
+        <div class="q">${i+1}. ${item.q}</div>
+        <div class="a">
+          คำตอบของคุณ: <b>${answers[i]!==null ? item.opts[answers[i]] : '—'}</b>
+          ${isCorrect ? '' : `<br>คำตอบที่ถูก: <b>${item.opts[item.correct]}</b>`}
+        </div>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+
+  showScreen('screen-result');
+
+  if(score >= 8){
+    setTimeout(fireConfetti, 250);
+  }
+}
+
+document.getElementById('retry-btn').addEventListener('click', ()=>{
+  showScreen('screen-study');
+});
+</script>
+</body>
+</html>
